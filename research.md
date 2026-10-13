@@ -318,7 +318,7 @@ risk raised in Objective 7.
 | 4 (beyond-market-data test) | Lagged-returns baseline model vs the same model plus each signal, on a walk-forward split; series made stationary first (ADF test); Granger causality as supporting evidence only | Lower out-of-sample RMSE for next-hour log returns and realised volatility, with the RMSE gap significant on a Diebold-Mariano test after Holm correction (16 tests); a signal that fails is reported as a negative result, not discarded |
 | 5 (lead-lag) | Correlation between each signal and later returns and volatility at 30min, 1hr, 4hr and 24hr | The shortest window that is significant after Holm correction (64 tests) and holds out-of-sample is reported as the lead time |
 | 6 (composite score) | Weighted combination of the 4 signals, each z-scored first, weights set on training data only | Beats the best single signal from Objective 4 out-of-sample on a Diebold-Mariano test |
-| 7 (walk-forward validation) | Sequential train/test split: train on 4 weeks, test on the next week, roll forward weekly (about 9 test windows from 3 months) | A relationship only counts as confirmed if it holds on the out-of-sample window, not just in-sample |
+| 7 (walk-forward validation) | Expanding training window with a 4-week minimum: fold 1 trains on weeks 1-4 and tests week 5, each later fold keeps all earlier weeks, rolled weekly to week 13 (9 test weeks). Scaling is fitted inside each training window and each signal uses only data known at that hour (no look-ahead) | RMSE scored on the 9 test weeks pooled (about 1,500 out-of-sample hours); wins in individual weeks are a stability note only. A relationship only counts as confirmed if it holds out-of-sample |
 
 **Original contribution:** integrating four independently-studied on-chain
 signal types into one statistically validated system, a combination not
@@ -481,5 +481,25 @@ sections above:
 - **Lead-lag windows:** 30min, 1hr, 4hr and 24hr. The 5-minute window was
   dropped because it is shorter than a Bitcoin block and the lag on public
   chain data, so it is a weak place to claim a lead.
-- **Walk-forward split:** train on 4 weeks, test on the next week, roll
-  forward weekly, which gives about 9 test windows from 3 months.
+- **Walk-forward split:** first test at week 5, rolled weekly, giving 9
+  test weeks from 3 months (see the next entry for the window type).
+
+## 2026-10-13 - Supervisor feedback: walk-forward design
+
+- **Expanding window, not fixed:** fold 1 trains on weeks 1-4 and tests
+  week 5; each later fold keeps all earlier weeks, so the last fold trains
+  on about 12 weeks. Four weeks is a short sample for sparse events such as
+  whale transfers and large exchange flows, and a sliding window would throw
+  away data from an already short 3-month sample.
+- **First test stays at week 5:** a longer minimum would cut the number of
+  test weeks for little gain.
+- **One pooled test:** the 9 non-overlapping test weeks (168 hours each,
+  about 1,500 out-of-sample hours) are scored as one pooled RMSE. Winning in,
+  say, 5 of 9 weeks is a stability note, not nine separate chances to pass.
+- **No look-ahead:** any scaling is fitted inside the training window, and
+  each signal is built only from data already known at that hour.
+- **Why (adaptedness):** the Ito integral evaluates the integrand at the left
+  endpoint of each interval, so the position is fixed before the move that
+  follows; the Stratonovich integral uses the midpoint, which depends on where
+  the path goes later in the same interval. Walk-forward applies the same
+  rule to the backtest: the model for a test week is fixed before that week.
