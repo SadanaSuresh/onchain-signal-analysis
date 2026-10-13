@@ -34,13 +34,13 @@ following (see `research.md` for progress on each):
 
 | Source | Used for |
 |---|---|
-| Dune Analytics | Custom SQL queries on raw chain data (transfers, DEX flows, stablecoins) |
+| Google BigQuery public datasets | Main on-chain source: SQL over historical Bitcoin and Ethereum data (exchange flows, whale transfers, stablecoin flows) |
+| Etherscan | Secondary source for address and transaction lookups |
 | Arkham Intelligence | Entity clustering, wallet labelling |
-| DefiLlama | Cross-chain/cross-venue capital flow, stablecoin TVL |
-| Coinglass | Derivatives context (open interest, funding, liquidations) |
-| CCXT | Market price/volume data across exchanges |
 | The Graph | DEX liquidity pool events (subgraphs) |
-| Mempool.space | Bitcoin pre-confirmation timing |
+| CCXT | Market price/volume data across exchanges |
+| Alchemy / Infura | Live feed for recent Ethereum activity (BigQuery lags the chain tip) |
+| Mempool.space | Live Bitcoin data and pre-confirmation timing |
 
 ## Repository structure
 
