@@ -114,8 +114,9 @@ target dates taken from the Time Schedule below):**
 **Scope:**
 - Included: everything in objectives 1-7, delivered as a web dashboard
 - Excluded: cryptocurrencies beyond Bitcoin and Ethereum, live/real-money
-  trading, a mobile app (web only), and any on-chain signals beyond the 4
-  chosen types
+  trading and profit claims (fees and slippage are not modelled), claims
+  beyond this 3-month sample, a mobile app (web only), and any on-chain
+  signals beyond the 4 chosen types
 
 ## 2026-09-30 — Background Review: literature and existing solutions
 
@@ -315,9 +316,9 @@ risk raised in Objective 7.
 | Objective | Method | Metric for success |
 |---|---|---|
 | 3 (anomaly detection) | Rolling z-score per wallet/token, not a fixed global threshold | Flags transfers >2 standard deviations from that wallet/token's own recent rolling mean |
-| 4 (beyond-market-data test) | Lagged-returns baseline model vs the same model plus each signal, on a walk-forward split; series made stationary first (ADF test); Granger causality as supporting evidence only | Lower out-of-sample RMSE for next-hour log returns and realised volatility, with the RMSE gap significant on a Diebold-Mariano test after Holm correction (16 tests); a signal that fails is reported as a negative result, not discarded |
-| 5 (lead-lag) | Correlation between each signal and later returns and volatility at 30min, 1hr, 4hr and 24hr | The shortest window that is significant after Holm correction (64 tests) and holds out-of-sample is reported as the lead time |
-| 6 (composite score) | Weighted combination of the 4 signals, each z-scored first, weights set on training data only | Beats the best single signal from Objective 4 out-of-sample on a Diebold-Mariano test |
+| 4 (beyond-market-data test) | Autoregressive market-only baseline (OLS on the target's own last 24 hourly values, refitted in each training window) vs the same baseline plus one signal's last 24 hourly values, on a walk-forward split; series made stationary first (ADF test); Granger causality as supporting evidence only | Lower out-of-sample RMSE for next-hour log returns and realised volatility, with the RMSE gap significant on a Diebold-Mariano test after Holm correction (16 tests); a signal that fails is reported as a negative result, not discarded |
+| 5 (lead-lag) | Correlation between each signal and later returns and volatility at 30min, 1hr, 4hr and 24hr, with Newey-West standard errors because the longer windows overlap | The shortest window that is significant after Holm correction (64 tests) and holds out-of-sample is reported as the lead time |
+| 6 (composite score) | Equal weights on the 4 z-scored signals, fixed in advance; weights fitted on training data only, as a secondary check | Beats the best single signal from Objective 4 out-of-sample on a Diebold-Mariano test |
 | 7 (walk-forward validation) | Expanding training window with a 4-week minimum: fold 1 trains on weeks 1-4 and tests week 5, each later fold keeps all earlier weeks, rolled weekly to week 13 (9 test weeks). Scaling is fitted inside each training window and each signal uses only data known at that hour (no look-ahead) | RMSE scored on the 9 test weeks pooled (about 1,500 out-of-sample hours); wins in individual weeks are a stability note only. A relationship only counts as confirmed if it holds out-of-sample |
 
 **Original contribution:** integrating four independently-studied on-chain
@@ -503,3 +504,47 @@ sections above:
   follows; the Stratonovich integral uses the midpoint, which depends on where
   the path goes later in the same interval. Walk-forward applies the same
   rule to the backtest: the model for a test week is fixed before that week.
+
+## 2026-10-13 - Data feasibility check and full test design
+
+**BigQuery check (free sandbox, 13 Oct, about 22:34 UTC):**
+- Newest block in `crypto_bitcoin.blocks`: 2026-10-13 22:06 UTC. Newest
+  block in `crypto_ethereum.blocks`: 2026-10-13 22:33 UTC. Both public
+  tables are current, about 30 minutes and 1 minute behind the live chain.
+- A 3-month pull of `crypto_ethereum.token_transfers` (13 Jul to 13 Oct
+  2026, five columns, filtered by date) would scan 46.93 GB, under 5% of
+  the free 1 TiB a month. Pull once and store locally to stay in quota.
+
+**Where each signal comes from, and the fallback:**
+
+| Data | Source | Resolution | Fallback if it fails |
+|---|---|---|---|
+| Exchange flows | BigQuery BTC and ETH tables, plus Arkham exchange labels | Every block | Published exchange wallet lists |
+| Whale transfers | BigQuery transfers, plus Arkham labels | Every block | Size threshold only, without labels |
+| Stablecoin flows | BigQuery Ethereum token transfers (USDT, USDC) | Every block | Etherscan token-transfer lookups |
+| DEX liquidity | The Graph (Uniswap subgraph) | Hourly pool data | Alchemy: read pool events directly |
+| Prices (targets) | CCXT (Binance) | 5-minute candles | Another exchange through CCXT |
+| Live feed | Alchemy/Infura (ETH), Mempool.space (BTC) | Seconds | BigQuery, accepting its lag |
+
+Go/no-go: every source is tested in week 1 of the pipeline phase. A signal
+whose source still fails is dropped and reported, and the others continue.
+
+**Test design, fixed before any test is run:**
+- Targets: next-hour log return, and next-hour realised volatility (square
+  root of the sum of squared 5-minute returns in that hour).
+- Baseline (Obj 4): autoregressive market-only model, OLS on the target's
+  own last 24 hourly values, refitted in each training window.
+- Signal model (Obj 4): the same baseline, unchanged, plus one signal's
+  last 24 hourly values.
+- Decision (Obj 4): lower pooled out-of-sample RMSE, confirmed by a
+  Diebold-Mariano test with Holm correction over 16 tests.
+- Lead-lag (Obj 5): Newey-West standard errors, because the 4hr and 24hr
+  windows overlap; Holm correction over 64 tests.
+- Timing: a transfer counts in the hour its block is mined and is used only
+  from the next hour; a daily signal uses its last completed day.
+- Composite (Obj 6): equal weights on z-scored signals as the main version;
+  weights fitted on training data are a secondary check only.
+- What a pass means: predictive value for BTC and ETH in this 3-month
+  sample only, not profit, since fees and slippage are not modelled.
+- Open question sent to Georgy: whether to add trading volume to the
+  baseline.
