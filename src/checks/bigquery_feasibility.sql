@@ -1,5 +1,5 @@
 -- Data feasibility check, run in the BigQuery sandbox on 13 Oct 2026.
--- Results are logged in research.md (2026-10-13 entry).
+-- Results are in research.md (13 Oct entries).
 
 -- 1) Are the public datasets current?  (run; result: BTC 22:06 UTC, ETH 22:33 UTC)
 SELECT 'bitcoin' AS chain, MAX(timestamp) AS latest_block_utc

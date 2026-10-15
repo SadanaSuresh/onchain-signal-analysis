@@ -1,5 +1,12 @@
 # src
-Source code for the on-chain signal dashboard.
-Planned first (Objective 1, target 20 Nov 2026): data pipeline pulling historical on-chain data from Google BigQuery public datasets and market data from CCXT for Bitcoin and Ethereum, with 3 months of history plus a live feed (Alchemy/Infura for Ethereum, Mempool.space for Bitcoin).
 
-- `checks/bigquery_feasibility.sql`: the two queries used for the 13 Oct 2026 data check (dataset freshness and the size of a 3-month pull). Results are in `research.md`.
+Code for the on-chain signal dashboard.
+
+First up (Objective 1, by 20 Nov 2026): the data pipeline. It pulls on-chain
+history from the Google BigQuery public datasets and price data through CCXT
+for Bitcoin and Ethereum, 3 months of history plus a live feed (Alchemy/Infura
+for Ethereum, Mempool.space for Bitcoin).
+
+- `checks/bigquery_feasibility.sql`: the two queries I ran on 13 Oct 2026 to
+  check the data is up to date and how big a 3-month pull would be. Results
+  are in `research.md`.

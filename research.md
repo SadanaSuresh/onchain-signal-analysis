@@ -1,291 +1,224 @@
 # Research Log
 
-## 2026-09-29 — Data source scoping
+My working notes for the project, newest entries at the bottom.
 
-Reviewed the free/freemium data landscape for each of the 14 research questions,
-given by the supervisor's advice. List of resources I checked and confirmed:
+## 29 Sep 2026 - Data sources
 
-- **Dune Analytics / Flipside Crypto** — free SQL access to raw Ethereum, Bitcoin
-  and Solana chain data. Covers custom queries on transfers, DEX flows and
-  stablecoin movements (Q1, Q6, Q7, Q8).
-- **The Graph** — free indexed subgraph queries, used for DEX liquidity pool
-  events in close to real time (Q8).
-- **Etherscan / Basescan** — free tier (approximately 100k calls/day), raw
-  transaction data and address labels (Q1, Q4).
-- **DefiLlama** — fully free API, TVL and cross-chain/cross-venue capital
-  migration data (Q7, Q8).
-- **Glassnode / CryptoQuant** — limited free tiers, cover exchange inflow/outflow
-  at a basic level (Q2, Q6); full granularity is paywalled.
-- **Coinglass** — free, open interest/funding rates/liquidations, useful
-  derivatives context (Q11).
-- **Whale Alert** — free tier flags large transfers with basic labels, but no
-  historical data on the free tier (Q3).
-- **Arkham Intelligence** — free tier with entity clustering and wallet history
-  (Q3, Q4, Q5). Best free option for tracking whale behaviour over time.
-- **Mempool.space** — free, Bitcoin mempool data, relevant to the pre-confirmation
-  timing question (Q10).
-- **Alchemy / Infura** — free tier Ethereum node access, for direct on-chain
-  indexing if needed (Q1, Q9, Q10).
-- **CCXT** — free Python library for market price/volume data across exchanges,
-  used alongside the on-chain sources for comparison (Q1, Q11).
+I went through the free and freemium data sources for each of the 14
+questions from my supervisor and checked what each one actually gives you:
 
-**Confirmed stack:** Dune + Arkham + DefiLlama + Coinglass + CCXT has the majority of data
-that is needed for the 14 questions, at no cost. The remaining gap is real-time anomaly detection (Q9)
-and large-scale entity clustering (Q5), which is only available at usable depth through paid subscriptions
-(Nansen, Chainalysis) but will try to approach it as a DIY build along with the free data.
+- **Dune / Flipside** - free SQL on raw Ethereum, Bitcoin and Solana data,
+  so I can write my own queries on transfers, DEX flows and stablecoins
+  (Q1, Q6, Q7, Q8).
+- **The Graph** - free subgraph queries for DEX liquidity pool events (Q8).
+- **Etherscan / Basescan** - free tier (about 100k calls a day) for raw
+  transactions and address labels (Q1, Q4).
+- **DefiLlama** - free API for TVL and money moving between chains and
+  venues (Q7, Q8).
+- **Glassnode / CryptoQuant** - basic exchange inflow/outflow on the free
+  tier (Q2, Q6), but the detailed data is paid.
+- **Coinglass** - free open interest, funding rates and liquidations, which
+  is useful context (Q11).
+- **Whale Alert** - flags large transfers for free, but there's no history
+  on the free tier (Q3).
+- **Arkham Intelligence** - entity clustering and wallet history, the best
+  free option I found for following whales over time (Q3, Q4, Q5).
+- **Mempool.space** - free Bitcoin mempool data, for the timing question
+  (Q10).
+- **Alchemy / Infura** - free Ethereum node access if I need to read the
+  chain directly (Q1, Q9, Q10).
+- **CCXT** - free Python library for price and volume data from exchanges
+  (Q1, Q11).
 
-*Updated 13 Oct 2026: Dune has been replaced by Google BigQuery public datasets as the main on-chain source (see the latest entry below).*
+**Stack I went with:** Dune + Arkham + DefiLlama + Coinglass + CCXT covers
+most of what the 14 questions need without paying anything. The parts that
+aren't really covered are real-time anomaly detection (Q9) and large-scale
+entity clustering (Q5). Those are only properly available through paid tools
+like Nansen and Chainalysis, so I'll try building my own versions on top of
+the free data.
 
-## Questions flagged as requiring custom analysis (no off-the-shelf tool)
+*Update 13 Oct: I've swapped Dune for Google BigQuery's public datasets as
+the main on-chain source (see the 13 Oct entry).*
 
-The following are not solved by any data source directly and require building
-the analysis: anomaly detection against dynamic thresholds (Q9), testing whether
-on-chain data adds information beyond market data via statistical methods such
-as Granger causality (Q11), measuring lead-lag relationships between on-chain
-events and prices at different time windows (Q12), and combining multiple
-signals into a composite score (Q13).
+## Questions that no tool answers directly
 
-## Methodology note: overfitting and multiple testing (Q14)
+These need me to build the analysis myself rather than just pull data:
+anomaly detection against thresholds that change over time (Q9), testing
+whether on-chain data adds anything beyond market data, e.g. with Granger
+causality (Q11), measuring lead-lag between on-chain events and price at
+different windows (Q12), and combining signals into one score (Q13).
 
-The biggest risk in this kind of research, since
-testing a lot of on-chain variables against price increases the chance of
-finding a "signal" that is just noise. The approach:
+## Note on overfitting (Q14)
 
-- I will form a hypothesis first, using questions 2 to 8 as priors, instead of testing
-  everything blindly.
-- Test only a small, pre-defined set of signals
-- Use walk-forward validation rather than in-sample testing
+This is the biggest risk in the whole project. If I test lots of on-chain
+variables against price, something will look like a signal just by chance.
+So:
 
-## 2026-09-29 — Problem Statement, Aim, Objectives and Scope finalised
+- I'll set my hypotheses first, using questions 2 to 8, instead of testing
+  everything and seeing what sticks
+- I'll only test a small set of signals that I pick in advance
+- I'll use walk-forward validation instead of testing on the same data I fit on
 
-**Problem statement:** Traders who rely only on price charts and market
-data miss a specific category of information that exists even before the price actually
-moves: on-chain activity. When a large amount of crypto moves from a wallet to
-an exchange it is usually a sign that a sale is coming, but chart-only traders
-don't see this happening on the blockchain. By the time the price actually
-drops and they notice, the move has already started, and they miss out on
-profit or take a bigger loss than initial if they were able to see the data earlier. This
-isn't a hypothetical gap: institutional analytics platforms (Nansen,
-Glassnode, Chainalysis) already sell this exact type of on-chain visibility
-to well-funded desks, at prices from roughly $99/month to an estimated
-$50,000-200,000/year (see Background Review), which confirms the
-information itself is valuable and already in active use, just not
-accessible to a trader without that budget. This project investigates
-whether on-chain signals carry information about price and volatility that
-isn't already reflected in market data, and whether a free-tier tool can
-give an individual trader that same early visibility.
+## 29 Sep 2026 - Problem, aim, objectives and scope
 
-**Aim:** build a web dashboard for traders that surfaces on-chain signals
-(exchange inflows/outflows, whale wallet transfers, stablecoin flows, DEX
-liquidity activity) across Bitcoin and Ethereum, to evaluate whether these
-signals provide predictive value for price movement and volatility beyond
-what is visible from market data alone.
+**Problem:** traders who only use price charts and market data miss a whole
+type of information that shows up before the price moves: on-chain
+activity. When a lot of crypto moves from a wallet to an exchange, it can
+mean a sale is coming, but a chart-only trader won't see that. By the time
+the price drops and they notice, the move has already started, so they miss
+out or lose more than they would have if they'd seen it earlier. Platforms
+like Nansen, Glassnode and Chainalysis already sell this kind of visibility
+to well-funded desks, from around $99 a month up to an estimated
+$50,000-200,000 a year, so the information clearly has value. It just isn't
+available to someone without that budget. My project looks at whether
+on-chain signals tell you something about price and volatility that market
+data doesn't already, and whether a free tool can give an individual trader
+that early view.
 
-**Objectives (7, SMART, covering all 14 original research questions;
-target dates taken from the Time Schedule below):**
+**Aim:** build a web dashboard for traders that shows on-chain signals
+(exchange inflows/outflows, whale transfers, stablecoin flows and DEX
+liquidity) for Bitcoin and Ethereum, and use it to test whether they predict
+price movement and volatility beyond what market data shows.
 
-1. By 20 Nov 2026, build a data pipeline pulling historical on-chain data
-   (Google BigQuery public datasets) and market data (CCXT) for BTC/ETH:
-   3 months of history at each source's finest resolution (5-minute for
-   prices), under 5% missing intervals, plus a live feed (Alchemy/Infura
-   for Ethereum, Mempool.space for Bitcoin). (Q1, Q10)
-2. By 8 Jan 2027, collect and process the 4 signal types (exchange flows,
-   whale transfers refined by entity/transfer-type labels, stablecoin
-   flows, DEX liquidity) using BigQuery, Arkham and The Graph. (Q2-Q8)
-3. By 8 Jan 2027, build anomaly detection using rolling z-scores per
-   wallet/token, rather than a fixed threshold. (Q9)
-4. By 21 Jan 2027, compare a lagged-returns model with the same model plus
-   each on-chain signal, on a walk-forward split. Success: lower
-   out-of-sample RMSE for next-hour log returns and realised volatility
-   (two pre-registered targets), significant on a Diebold-Mariano test
-   after Holm correction (16 tests: 4 signals x 2 assets x 2 targets).
-   Granger causality is supporting evidence only. (Q11)
-5. By 21 Jan 2027, measure lead-lag as the correlation between each signal
-   and later returns and volatility at 30min, 1hr, 4hr and 24hr. The
-   shortest window that is significant after Holm correction (64 tests)
-   and holds out-of-sample is the lead time; otherwise no lead is
-   claimed. (Q12)
-6. By 10 Mar 2027, build a composite score combining all 4 signals and
-   test whether it beats the best single signal out-of-sample on a
-   Diebold-Mariano test. (Q13)
-7. By 10 Mar 2027, apply walk-forward validation across objectives 4-6 to
-   guard against overfitting and multiple-testing bias. (Q14)
+**Objectives** (7, covering all 14 questions; dates come from my timeline):
+
+1. By 20 Nov 2026: a data pipeline pulling on-chain data (BigQuery) and
+   market data (CCXT) for BTC and ETH, with 3 months of history at each
+   source's finest resolution (5-minute for prices), under 5% missing
+   intervals, plus a live feed (Alchemy/Infura for ETH, Mempool.space for
+   BTC). (Q1, Q10)
+2. By 8 Jan 2027: collect the 4 signals (exchange flows, whale transfers
+   cleaned up with labels and transfer types, stablecoin flows, DEX
+   liquidity) using BigQuery, exchange wallet labels and The Graph. (Q2-Q8)
+3. By 8 Jan 2027: anomaly detection with rolling z-scores per wallet/token
+   instead of one fixed threshold. (Q9)
+4. By 21 Jan 2027: compare a lagged-returns model against the same model
+   plus each signal, on a walk-forward split. It passes if out-of-sample
+   RMSE is lower for next-hour log returns and realised volatility (both
+   chosen in advance), and the difference holds up on a Diebold-Mariano
+   test after Holm correction (16 tests: 4 signals x 2 coins x 2 targets).
+   Granger is only supporting evidence. (Q11)
+5. By 21 Jan 2027: lead-lag, measured as the correlation between each
+   signal and later returns and volatility at 30min, 1hr, 4hr and 24hr. The
+   shortest window that is still significant after Holm (64 tests) and
+   holds out-of-sample is the lead time. If none does, I don't claim a
+   lead. (Q12)
+6. By 10 Mar 2027: a composite score from all 4 signals, tested against
+   the best single signal out-of-sample with Diebold-Mariano. (Q13)
+7. By 10 Mar 2027: walk-forward validation across objectives 4-6 so I'm
+   not fooled by overfitting or by running lots of tests. (Q14)
 
 **Scope:**
-- Included: everything in objectives 1-7, delivered as a web dashboard
-- Excluded: cryptocurrencies beyond Bitcoin and Ethereum, live/real-money
-  trading and profit claims (fees and slippage are not modelled), claims
-  beyond this 3-month sample, a mobile app (web only), and any on-chain
-  signals beyond the 4 chosen types
+- In: everything in objectives 1-7, delivered as one web dashboard
+- Out: coins other than BTC and ETH, live or real-money trading and any
+  profit claims (I'm not modelling fees or slippage), claims beyond this
+  3-month sample, a mobile app, and any signals beyond the 4 above
 
-## 2026-09-30 — Background Review: literature and existing solutions
+## 30 Sep 2026 - Literature and existing tools
 
-Found and verified 8 real academic sources (checked directly against the
-publisher/arXiv/Springer pages, not taken on trust):
+I found 8 academic sources and checked each one against the publisher,
+arXiv or Springer page myself:
 
-1. Chi, Y., Chu, Q. and Hao, W., 'Return and Volatility Forecasting Using
-   On-Chain Flows in Cryptocurrency Markets', arXiv 2411.06327
-2. Grobys, K., Näsman, S. and Sandretto, D., 'Using on-chain data to predict
-   Bitcoin cycles', Research in International Business and Finance, vol. 89,
-   2026
-3. Urumov, G. and Chountas, P., 'Clustering stock price volatility using
-   intuitionistic fuzzy sets', Notes on Intuitionistic Fuzzy Sets, 28(3),
-   2022 (my supervisor's own published paper)
-4. Chalkiadakis, I., Zaremba, A., Peters, G.W. and Chantler, M.J., 'On-chain
-   analytics for sentiment-driven statistical causality in cryptocurrencies',
-   Blockchain: Research and Applications, 3(2), Article 100063, 2022
-5. Bailey, D.H., Borwein, J.M., Salehipour, A., López de Prado, M. and
-   Zhu, Q., 'Backtest overfitting in financial markets', 2016
-6. Kang, C., Lee, C., Ko, K., Woo, J. and Hong, J.W.K., 'De-Anonymization of
-   the Bitcoin Network Using Address Clustering', BlockSys 2020, Springer
-7. Drakopoulou, V., 'Stablecoin Liquidity as a Crypto-Native Regime Signal:
-   State-Dependent Density Forecasts for BTC, ETH, and SOL', Research
-   Square preprint, 2026
-8. Zhu, B., Liu, D., Wan, X., Liao, G., Moallemi, C. and Bachu, B., 'What
-   Drives Liquidity on Decentralized Exchanges? Evidence from the Uniswap
-   Protocol', arXiv 2410.19107 (cited as the arXiv preprint; a possible
-   Springer FC 2025 workshop publication could not be verified, so it is
-   not claimed here)
+1. Chi, Chu and Hao - return and volatility forecasting using on-chain
+   flows (arXiv 2411.06327)
+2. Grobys, Näsman and Sandretto - using on-chain data to predict Bitcoin
+   cycles (Research in International Business and Finance, 2026)
+3. Urumov and Chountas - clustering stock price volatility with
+   intuitionistic fuzzy sets (2022), my supervisor's paper
+4. Chalkiadakis et al. - on-chain analytics and statistical causality
+   (Blockchain: Research and Applications, 2022)
+5. Bailey et al. - backtest overfitting in financial markets (2016)
+6. Kang et al. - de-anonymising the Bitcoin network with address
+   clustering (BlockSys 2020)
+7. Drakopoulou - stablecoin liquidity as a regime signal (Research Square
+   preprint, 2026)
+8. Zhu et al. - what drives liquidity on Uniswap (arXiv 2410.19107). I
+   couldn't confirm a Springer version, so I cite the arXiv preprint.
 
-**Gap analysis:** existing research treats these signals in isolation, each
-study tests one on-chain signal type against price using its own
-methodology and time window, with no single study combining exchange
-flows, whale activity, stablecoin flows and DEX liquidity into one
-evaluated system. Chalkiadakis et al. (2022) test statistical causality
-between on-chain sentiment and price using a single-signal framework, and
-Zhu et al. (2024) study what drives DEX liquidity on Uniswap in isolation
-from other on-chain signal types; both reinforce the single-signal pattern
-this project is built to move past. Bailey et al. (2016) show that testing
-multiple signals without proper validation risks false discoveries, a risk
-this literature does not consistently address. This project closes that
-gap by testing all four signal types together under walk-forward
-validation, presented through one dashboard.
+**The gap:** each study looks at one type of signal on its own, with its
+own method and time window. None of them puts exchange flows, whale
+activity, stablecoin flows and DEX liquidity together in one tested system.
+Chalkiadakis et al. test one sentiment signal against price, and Zhu et al.
+look at DEX liquidity by itself. Bailey et al. show that testing lots of
+signals without proper validation leads to false discoveries, and most of
+this literature doesn't really deal with that. So my project tests all
+four together, with walk-forward validation, in one dashboard.
 
-**Cross-source synthesis:** these sources do not fully agree with each
-other. Grobys et al. (2026) report strong backtested outperformance from
-on-chain indicators, but Bailey et al. (2016) show that this kind of result
-is exactly the pattern most vulnerable to false discovery from untested
-strategy variation, directly motivating Objective 7's walk-forward
-validation rather than treating it as a generic precaution. Similarly, Chi
-et al. model stablecoin flows as linear predictors of returns, while
-Drakopoulou finds stablecoin liquidity instead signals non-linear regime
-shifts, an open disagreement addressed by applying Urumov and Chountas's
-(2022) fuzzy clustering approach, originally developed for non-separable
-volatility data, to define these regimes within Objective 6's composite
-scoring.
+**Where the sources disagree:** Grobys et al. get strong backtested
+results from on-chain indicators, but that's exactly the kind of result
+Bailey et al. warn about, which is why I'm using walk-forward validation.
+Chi et al. treat stablecoin flows as a simple linear predictor, while
+Drakopoulou finds they work more like a signal for switching between market
+regimes. A possible way to look at this is to use my supervisor's fuzzy
+clustering method to define the regimes.
 
-**Existing solutions reviewed:** Nansen (wallet labelling, ~$99-499/month),
-Glassnode (macro on-chain metrics, ~$29-999/month), Arkham Intelligence
-(entity labelling, ~$55/month, the tool I'm using), Chainalysis (blockchain
-forensics for compliance, ~$50k-200k/year, third-party estimate). All four
-surface on-chain data but none statistically test whether it predicts
-price, and none combine multiple signal types into one evaluated output.
-This project's contribution isn't new data collection (same free-tier
-sources), it's the testing and integration layer these platforms don't
-provide. Kang et al. (2020) show that address clustering can
-de-anonymize a meaningful share of Bitcoin wallets using heuristics similar
-to the entity clustering Arkham exposes, which both confirms the technical
-feasibility of the whale-tracking approach in Objective 2 and is exactly
-why Objective 2 and the Ethics section below restrict this project to
-labels Arkham already makes public, rather than attempting independent
-clustering.
+**Existing tools:** Nansen (wallet labels, ~$99-499/month), Glassnode
+(on-chain metrics, ~$29-999/month), Arkham (entity labels, the one I plan to
+use) and Chainalysis (compliance forensics, ~$50k-200k/year, third-party
+estimate). They all show on-chain data, but none of them tests whether it
+actually predicts price, and none combines several signals into one tested
+output. That's what my project adds. It's not new data, it's the testing
+layer on top. Kang et al. show address clustering can de-anonymise a lot of
+Bitcoin wallets, which is why I'm sticking to labels that are already
+public and not doing my own clustering.
 
-**Background stats (industry context):** global crypto market cap over
-$3.9 trillion (Aug 2025), daily trading volume approximately $144 billion,
-Bitcoin dominance approximately 57%, global retail crypto trading activity
-$979 billion in Q1 2026 (TRM Labs, down 11% year-on-year).
+**Background numbers:** crypto market cap over $3.9 trillion (Aug 2025),
+daily volume around $144 billion, Bitcoin dominance around 57%, and retail
+transaction volume of $979 billion in Q1 2026, down 11% from about $1.1
+trillion a year earlier (TRM Labs).
 
-## 2026-09-30 — Tools & Technologies
+## 30 Sep 2026 - Tools
 
-Dashboard framework decided: Streamlit over Flask (used previously on a
-personal project), because Streamlit has built-in charting and live-update
-components suited to a multi-signal dashboard, saving development time for
-the more heavily weighted Methodology and Q&A preparation.
+**Dashboard:** I picked Streamlit over Flask (which I used for LetBrick)
+because it has charts and live updates built in, so I can spend more time
+on the testing and less on building a front end.
 
-Full tools table with justification and alternatives-considered trade-off
-analysis for each phase:
+What I'm using for each part, and what I decided against:
 
-**Data collection (on-chain history):** Google BigQuery public datasets
-(crypto_bitcoin, crypto_ethereum), queried with SQL; the first 1 TiB of
-query data processed per month is free, so queries are filtered by date
-and column instead of scanning full tables. Alternatives: Dune, whose free
-plan is view-only (a short trial is fine for sketching a query, then the
-SQL is ported to BigQuery); Etherscan, kept as a secondary source because
-its free tier is built for address and transaction lookups, not
-chain-wide SQL. Limitation: BigQuery lags the chain tip, so it is the
-historical warehouse only.
+- **On-chain history:** BigQuery public datasets (crypto_bitcoin,
+  crypto_ethereum) with SQL. The first 1 TiB of queries a month is free, so
+  I filter by date and column instead of scanning whole tables. Dune's free
+  plan is view-only now, so I'd only use it to sketch a query. Etherscan
+  stays as a backup for lookups, since it isn't built for chain-wide
+  queries. BigQuery runs a bit behind the live chain, so it's for history
+  only.
+- **Live feed:** Alchemy/Infura for Ethereum and Mempool.space for Bitcoin,
+  both free. BigQuery is too far behind for this.
+- **Whale/entity labels:** Arkham. Nansen has better labels but costs
+  $99-499 a month. Whale Alert has no history on the free tier, so it can't
+  cover 3 months, but it could help with the live feed.
+- **Cross-venue:** I dropped DefiLlama on 13 Oct. Stablecoin flows now come
+  from BigQuery token transfers and DEX liquidity from The Graph.
+- **DEX liquidity:** The Graph. I could query Uniswap contracts directly
+  through Alchemy, but the existing subgraphs already have what I need.
+- **Market data:** CCXT, one library for many exchanges. Going to each
+  exchange's API directly is slightly faster but means a separate
+  integration each time, and speed doesn't matter here.
+- **Storage:** Python, pandas and SQLite. PostgreSQL would scale better,
+  but it's just me using it.
+- **Stats:** statsmodels and scipy. R would work too, but then my code
+  would be split across two languages.
+- **Version control:** Git and GitHub, which my supervisor asked for so he
+  can follow progress through README.md and this log.
 
-**Data collection (live feed):** Alchemy/Infura for recent Ethereum
-activity and Mempool.space for Bitcoin pre-confirmation timing, both free.
-Alternative: BigQuery, ruled out for the live feed because it lags the
-chain tip.
+**How it fits together:** the data side (BigQuery, Arkham, The Graph, CCXT,
+Alchemy/Infura, Mempool.space) was chosen because it's all free and needs no
+servers. My supervisor's tool list covered most of the 14 questions, and on
+13 Oct he agreed BigQuery should replace Dune. The analysis side (pandas,
+SQLite, statsmodels, scipy) is all Python, so the pipeline from Objective 1
+feeds straight into the tests in Objectives 4-7. Streamlit can read the same
+pandas data directly, which is the main reason I didn't go with Flask.
 
-**Data collection (entity/whale):** Arkham Intelligence, free entity
-clustering and wallet history. Alternative: Nansen, more mature labelling
-but $99-499/month; Whale Alert, real-time flags but no historical data on
-the free tier, ruling it out for the 3-month historical requirement, though
-it could supplement Arkham for the live feed specifically.
+## 30 Sep 2026 - Methodology
 
-**Data collection (cross-venue):** DefiLlama was dropped from the
-committed stack on 13 Oct 2026: stablecoin flows now come from BigQuery
-token transfers and DEX liquidity from The Graph.
-
-**Data collection (DEX liquidity):** The Graph, free indexed subgraph
-queries. Alternative: direct Alchemy/Infura querying, more granular control
-but requires manually writing smart contract query logic; unnecessary since
-existing Uniswap subgraphs already expose the needed data.
-
-**Data collection (market data):** CCXT, free library unifying market data
-across exchanges. Alternative: direct exchange APIs, marginally lower
-latency but require separate integration per exchange; not worth it since
-this project isn't latency-sensitive.
-
-**Data storage/processing:** Python (pandas) + SQLite, free, no server
-setup. Alternative: PostgreSQL, better concurrent-write scalability, but
-unused capability for a single-user academic project.
-
-**Statistical analysis:** Python (statsmodels, scipy). Alternative: R,
-comparable statistical depth but would fragment the codebase between
-collection (Python) and analysis (R) for no analytical benefit.
-
-**Dashboard/visualization:** Streamlit, built-in charting/live-update.
-Alternative: Flask, more UI control but requires manually building
-charting functionality Streamlit provides natively.
-
-**Version control/documentation:** Git + GitHub, specifically requested by
-the supervisor for tracking progress via README.md and research.md.
-
-**Why this specific combination, not just each tool in isolation:** the
-stack is deliberately structured in two layers rather than picked
-tool-by-tool. The data-collection layer (BigQuery, Arkham, The Graph,
-CCXT, plus Alchemy/Infura and Mempool.space for the live feed) was chosen
-entirely on one criterion, free access to real raw or indexed data with
-no infrastructure to self-host. Georgy's tool-mapping covered the large
-majority of the 14 research questions, and on 13 Oct 2026 he confirmed
-BigQuery as the replacement for Dune. The analysis layer (pandas,
-SQLite, statsmodels, scipy) was chosen on a different criterion,
-minimising integration overhead, by staying inside one language (Python)
-end to end so the pipeline built in Objective 1 feeds directly into the
-statistical testing in Objectives 4-7 without a format-conversion step
-between them. Streamlit sits on top of both layers rather than being
-picked independently: it needs to read directly from the same
-pandas/SQLite objects the analysis layer already produces, which is why
-Flask (requiring a separate templating/serialization step to display the
-same data) was rejected specifically for this project's shape, not on
-general merit.
-
-## 2026-09-30 — Methodology
-
-**Development methodology: Agile (iterative, solo-adapted).**
+**Approach: Agile, adapted for working on my own.**
 
 The 7 objectives are incremental and can be tested independently and
 this is exploratory research, so, it isn't known in advance which of the 4
 signal types will actually be proven. That uncertainty is what
 Agile is built for, rather than Waterfall, which assumes fixed requirements
-upfront. This also matches the earlier decision to attempt all 14 of the
-supervisor's original questions and drop whichever parts don't work out
-rather than negotiate scope down in advance, iterate then descope based on
-what is learned.
+upfront. It also fits my plan to try all 14 of my supervisor's questions and
+drop whatever doesn't work, rather than cutting scope before I start.
 
 **Strength:** if an objective underperforms during testing (e.g.
 anomaly detection or composite scoring), the scope can be adapted without the whole
@@ -297,98 +230,72 @@ flexible deadlines, but as a student working on a fixed-deadline project
 solo academic project, not full Scrum, which needs defined roles and
 team ceremonies.
 
-**Requirement elicitation methods:**
-- Supervisor consultation: Georgy's 14-question roadmap and tool-mapping
-  emails functioned as structured stakeholder elicitation, directly
-  shaping the 7 objectives
-- Literature review: the gap analysis from the Background Review elicited
-  the core functional requirement, no existing tool combines multiple
-  signal types with statistical validation, which became this project's
-  central requirement
+**Where my requirements come from:**
+- My supervisor: his 14 questions and tool list shaped the 7 objectives
+- The literature: the gap (no tool combines several signals with proper
+  testing) became the main requirement
 
-**Analytical methods and success metrics (per objective):** the dev
-methodology (Agile) governs how the project is built; these are the actual
-technical methods and the specific pass/fail metric, each one is judged
-against, so "success" is defined in advance rather than decided after
-seeing the results, which is itself a safeguard against overfitting
-risk raised in Objective 7.
+**Methods and how I'll judge each objective** (decided now, before I see
+any results, so I can't move the goalposts later):
 
-| Objective | Method | Metric for success |
+| Objective | Method | Pass if |
 |---|---|---|
-| 3 (anomaly detection) | Rolling z-score per wallet/token, not a fixed global threshold | Flags transfers >2 standard deviations from that wallet/token's own recent rolling mean |
-| 4 (beyond-market-data test) | Autoregressive market-only baseline (OLS on the target's own last 24 hourly values, refitted in each training window) vs the same baseline plus one signal's last 24 hourly values, on a walk-forward split; series made stationary first (ADF test); Granger causality as supporting evidence only | Lower out-of-sample RMSE for next-hour log returns and realised volatility, with the RMSE gap significant on a Diebold-Mariano test after Holm correction (16 tests); a signal that fails is reported as a negative result, not discarded |
-| 5 (lead-lag) | Correlation between each signal and later returns and volatility at 30min, 1hr, 4hr and 24hr, with Newey-West standard errors because the longer windows overlap | The shortest window that is significant after Holm correction (64 tests) and holds out-of-sample is reported as the lead time |
-| 6 (composite score) | Equal weights on the 4 z-scored signals, fixed in advance; weights fitted on training data only, as a secondary check | Beats the best single signal from Objective 4 out-of-sample on a Diebold-Mariano test |
-| 7 (walk-forward validation) | Expanding training window with a 4-week minimum: fold 1 trains on weeks 1-4 and tests week 5, each later fold keeps all earlier weeks, rolled weekly to week 13 (9 test weeks). Scaling is fitted inside each training window and each signal uses only data known at that hour (no look-ahead) | RMSE scored on the 9 test weeks pooled (about 1,500 out-of-sample hours); wins in individual weeks are a stability note only. A relationship only counts as confirmed if it holds out-of-sample |
+| 3 (anomaly detection) | Rolling z-score per wallet/token, not one fixed threshold | It flags transfers more than 2 standard deviations from that wallet/token's recent average |
+| 4 (beyond market data) | Baseline: OLS on the target's own last 24 hourly values, refitted each training window. Signal model: the same plus one signal's last 24 hourly values. Walk-forward split; ADF test first; Granger as support only | Lower out-of-sample RMSE for next-hour log returns and realised volatility, and the gap is significant on Diebold-Mariano after Holm (16 tests). A signal that fails is reported, not hidden |
+| 5 (lead-lag) | Correlation between each signal and later returns and volatility at 30min, 1hr, 4hr and 24hr, with Newey-West errors because the longer windows overlap | The shortest window that's significant after Holm (64 tests) and holds out-of-sample is the lead time |
+| 6 (composite) | Equal weights on the 4 z-scored signals, fixed in advance; fitted weights only as a side check | Beats the best single signal (picked on training data only) out-of-sample on Diebold-Mariano |
+| 7 (walk-forward) | Expanding window: train on weeks 1-4, test week 5, then keep adding weeks and roll forward weekly to week 13 (9 test weeks). Scaling is fitted inside each training window and signals only use data known at that hour | RMSE pooled over the 9 test weeks (about 1,500 hours). Winning individual weeks is just a stability note. Nothing counts as confirmed unless it holds out-of-sample |
 
-**Original contribution:** integrating four independently-studied on-chain
-signal types into one statistically validated system, a combination not
-attempted in any reviewed literature or existing platform, tested under
-walk-forward validation to guard against the overfitting risk identified
-as the field's primary failure mode. The technical difficulty is not any
-single method in isolation (each of the five methods above is individually
-standard), it is applying all of them consistently across four
-independently-sourced, differently-shaped signal types for two assets
-without letting the analysis quietly overfit, which is exactly the failure
-mode Bailey et al. (2016) and Georgy both identified as the field's biggest
-risk.
+**What's original:** each method on its own is standard. What's new is
+using them together on four signal types from different sources, for two
+coins, with walk-forward validation, without letting the analysis quietly
+overfit. Bailey et al. and my supervisor both called overfitting the biggest
+risk in this area.
 
-**Why Agile specifically fits this technical shape:** each objective in
-the table above is a self-contained pass/fail test. If Objective 3
-(anomaly detection) turns out noisy or Objective 6 (composite scoring)
-doesn't beat the individual signals, that objective can be simplified,
-reported as a negative finding, or dropped without stalling the others,
-because they don't depend on each other succeeding. A Waterfall plan fixed
-in advance would force committing to a composite-scoring design before
-knowing whether any individual signal even works, which is the specific
-risk Agile's incremental structure avoids here.
+**Why Agile suits this:** each objective is its own pass/fail test. If
+anomaly detection turns out noisy, or the composite doesn't beat the single
+signals, I can simplify it, report it as a negative result or drop it, and
+the rest still works. With Waterfall I'd have to commit to a composite
+design before knowing if any single signal works at all.
 
-## 2026-09-30 — Ethics, Legal, Social, EDI and Sustainability
+## 30 Sep 2026 - Ethics, legal, social, EDI and sustainability
 
-| Area | Issue specific to this project | Safeguard |
+| Area | Issue | What I'll do |
 |---|---|---|
-| Legal | Each data source (BigQuery, Arkham, The Graph, CCXT, Alchemy/Infura, Mempool.space) has its own free-tier ToS | Strict compliance per API: no scraping beyond limits, no reselling data, no exceeding rate limits |
-| Privacy | Blockchain wallets are pseudonymous, but entity clustering (Objective 2) can link them to real identities | Only use identity labels already public via Arkham; never attempt independent deanonymization |
-| Social/financial harm | Dashboard's prediction flags could be interpreted as guaranteed trading facts | Mandatory disclaimer (academic purpose only); display confidence ranges, not binary buy/sell signals |
-| EDI | Stablecoins are used by people incorrectly in unstable economies as a survival tool, not speculation (~90% of Venezuela's Binance P2P volume is USDT) | Keep framing analytical/academic, not "get rich" marketing language |
-| Sustainability | No new blockchain computation/mining created, only querying existing data | Avoid redundant/repeated API queries to minimize load on free-tier infrastructure |
-| Systemic risk (beyond individual harm) | If signal-based tools like this become widely adopted, coordinated reaction to the same on-chain events could amplify volatility rather than reduce information asymmetry | This is regarded as a scaling limitation beyond the project's scope to test, but not left unaddressed: the dashboard will show confidence ranges and a historical hit rate instead of an instant real-time alert, purposely introducing a short delay before the user can engage, which might reduce the chance of users reacting to signals that look the same at the same instant |
-| Legal boundary (GDPR) | Wallet addresses are pseudonymous, not directly tied to verified identity by this project, so likely outside GDPR's personal data definition; however entity clustering makes this boundary not absolute | Will not attempt independent deanonymization beyond labels already public through Arkham |
+| Legal | Every source (BigQuery, Arkham, The Graph, CCXT, Alchemy/Infura, Mempool.space) has its own terms | Stick to each API's terms: no scraping, no reselling, stay within rate limits |
+| Privacy | Wallets are pseudonymous, but clustering can link them to real people | Only use labels that are already public (exchanges, funds), never try to de-anonymise anyone |
+| Financial harm | People might read a prediction as a sure thing | Disclaimer, and show ranges and hit rates instead of buy/sell signals |
+| EDI | In unstable economies stablecoins are often a way to protect savings, not speculation (around 90% of Venezuela's Binance P2P volume is USDT) | Keep the wording plain and analytical, no "get rich" language |
+| Sustainability | No mining or new transactions, just querying data that already exists | Avoid repeat queries, filter BigQuery scans, store data locally |
+| Crowd effects | If lots of people used tools like this, they could all react to the same event at once and make prices swing more | Out of scope to test, but the dashboard shows ranges and a historical hit rate rather than instant alerts, so people aren't all pushed to act at the same second |
+| GDPR | Wallet addresses aren't tied to names by this project, so probably not personal data, but clustering makes that line blurry | Same as privacy: public labels only, no de-anonymising |
 
-**SDG engagement:** SDG 10 (Reduced Inequalities) is the primary, directly-tied
-SDG. Existing institutional-grade on-chain analytics tools are priced for
-institutions (Nansen ~$99-499/month, Chainalysis an estimated
-$50,000-200,000/year). This project deliberately uses only free-tier data
-sources to build equivalent analytical capability, directly addressing the
-information gap between institutional and retail market participants
-identified in the Background Review.
+**SDGs:** SDG 10 (reduced inequalities) is the main one. The good on-chain
+tools are priced for institutions (Nansen ~$99-499 a month, Chainalysis an
+estimated $50k-200k a year). I'm only using free data, so an individual
+trader gets the same kind of analysis without the budget.
 
-## 2026-09-30 — Time Schedule
+## 30 Sep 2026 - Timeline
 
-Full plan spans the whole FYP (not just the PP), aligned to the real module
-timeline, with personal target dates set roughly 2 weeks ahead of each
-official deadline as a deliberate risk-management buffer:
+The plan covers the whole FYP, not just the proposal. I've set my own
+targets about 2 weeks before each official deadline as a buffer:
 
-| Phase | My target | Official deadline | Main task | Key sub-tasks | Risk + mitigation |
+| Phase | My target | Official deadline | Main task | Sub-tasks | Risk and fix |
 |---|---|---|---|---|---|
-| 1. PP finalization | 20 Oct 2026 | 2 Nov 2026 | Complete and rehearse PP | Finish remaining slides, assemble deck, rehearse Q&A | 2-week buffer for rehearsal and unexpected issues |
-| 2. Data pipeline (Obj 1) | 20 Nov 2026 | Feeds SRS, 4 Dec 2026 | Build data collection pipeline | BigQuery setup (date- and column-filtered queries), live feed via Alchemy/Infura and Mempool.space, CCXT integration, SQLite schema, 3-month historical backfill | BigQuery 1 TiB free quota and rate limits → filter queries by date and column, start with a shorter window, expand once confirmed working |
-| 3. Signal collection + anomaly detection (Obj 2, 3) | 8 Jan 2027 | First code demo, 22 Jan 2027 | Collect 4 signal types, build anomaly detection | Exchange flows first, then whale/entity refinement, stablecoin flows, DEX liquidity, rolling z-score | Entity clustering more complex than expected → build simplest signal first, add refinements incrementally |
-| 4. Statistical testing + dashboard MVP (Obj 4, 5) | 21 Jan 2027 | IPD, 4 Feb 2027 | Forecast tests (RMSE, Diebold-Mariano), lead-lag testing, dashboard MVP | Baseline and signal models, Holm correction, build first dashboard view | No significant result found → still a valid research finding, reframe rather than treat as failure |
-| 5. Composite scoring + validation (Obj 6, 7) | 10 Mar 2027 | — | Build composite score, apply walk-forward validation | Equal-weighted scoring first, then optimize, rolling train/test splits | Backtesting computational time → start simple before optimizing |
-| 6. Full dashboard + report | 8 Apr 2027 | Final Report/Software/Video, 22 Apr 2027 | Finalize dashboard, write report, record demo | Polish UI, write methodology/results, edit video | Report-writing time crunch → draft sections as each objective completes |
-| 7. Viva prep | 20 Apr 2027 | Viva, 29 Apr-14 May 2027 | Rehearse full project defense | Mock Q&A on all 7 objectives and findings | — |
+| 1. Proposal | 20 Oct 2026 | 2 Nov 2026 | Finish and rehearse the PP | Finish slides, rehearse Q&A | 2-week buffer for rehearsal |
+| 2. Data pipeline (Obj 1) | 20 Nov 2026 | Feeds SRS, 4 Dec 2026 | Build the pipeline | BigQuery queries (filtered by date and column), live feed, CCXT, SQLite, 3-month backfill | BigQuery quota and rate limits: filter queries, start with a shorter window, then expand |
+| 3. Signals + anomalies (Obj 2, 3) | 8 Jan 2027 | First code demo, 22 Jan 2027 | Collect the 4 signals, build anomaly detection | Exchange flows first, then whales, stablecoins, DEX liquidity, rolling z-score | Labels harder than expected: simplest signal first, add the rest step by step |
+| 4. Testing + first dashboard (Obj 4, 5) | 21 Jan 2027 | IPD, 4 Feb 2027 | Forecast tests and lead-lag, first dashboard | Baseline and signal models, Holm, first dashboard view | No significant result: that's still a valid finding, report it |
+| 5. Composite + validation (Obj 6, 7) | 10 Mar 2027 | - | Composite score, walk-forward | Equal weights first, then fitted weights, train/test splits | Slow backtests: start simple |
+| 6. Dashboard + report | 8 Apr 2027 | Report/software/video, 22 Apr 2027 | Finish the dashboard, write up, record demo | Polish UI, write results, edit video | Writing crunch: draft each section as each objective finishes |
+| 7. Viva prep | 20 Apr 2027 | Viva, 29 Apr-14 May 2027 | Rehearse | Mock Q&A on all 7 objectives | - |
 
-The consistent ~2-week buffer across every phase is itself the stated risk
-management strategy for the Time Schedule slide.
+The 2-week buffer on every phase is my main way of managing risk.
 
-## Next steps
+## 30 Sep 2026 - References (Harvard)
 
-- Format the reference list in Harvard style
-- Assemble all content into actual slides
-- Start building the data collection pipeline (BigQuery + CCXT)
-
-## 2026-09-30 — References (Harvard style)
+The full, up-to-date list is in the proposal slides. These are the 8 I
+started with:
 
 Bailey, D.H., Borwein, J.M., Salehipour, A., López de Prado, M. and Zhu, Q.
 (2016) *Backtest overfitting in financial markets*. [Working paper].
@@ -430,139 +337,122 @@ Zhu, B., Liu, D., Wan, X., Liao, G., Moallemi, C. and Bachu, B. (2024)
 Uniswap protocol'. arXiv:2410.19107 [Preprint]. Available at:
 https://arxiv.org/abs/2410.19107 (Accessed: 30 September 2026).
 
-Verification update (30 Sept 2026, second pass): all outstanding items now
-closed. Bailey et al. confirmed as a working paper, not a journal article
-(source document dated Feb 2016, no journal/conference listed anywhere in
-it). Kang et al. confirmed via the Springer chapter page directly: pp.
-489-501, Communications in Computer and Information Science vol. 1267,
-edited by Zheng, Dai, Fu and Chen, published 12 November 2020, DOI
-10.1007/978-981-15-9213-3_38. Chalkiadakis et al. confirmed as published
-in Blockchain: Research and Applications, vol. 3(2), June 2022, Article
-100063 (this journal uses article numbers instead of page ranges, which
-is why none were listed before). Zhu et al. could not be confirmed as
-published in the Financial Cryptography and Data Security FC 2025
-Springer workshop proceedings despite a direct search, so it is now cited
-as the verified arXiv preprint (2410.19107, Oct 2024) instead of an
-unverified Springer venue. Diacritics corrected for consistency: López de
-Prado (Bailey et al.) and Näsman (Grobys et al.). All 8 references are now
-verified against a primary source with no unresolved or unverifiable
-claims.
+Checking notes: Bailey et al. is a working paper (dated Feb 2016, no
+journal). Kang et al. page numbers and editors come from the Springer
+chapter page (DOI 10.1007/978-981-15-9213-3_38). Chalkiadakis et al. uses
+an article number because that journal doesn't use page ranges. Zhu et al.
+is cited as the arXiv preprint because I couldn't find the Springer
+version. I also fixed the accents in López de Prado and Näsman.
 
-## Next steps
+## 13 Oct 2026 - Supervisor feedback: data and tests
 
-- Assemble all content into actual slides (14-slide structure)
-- Start building the data collection pipeline (BigQuery + CCXT)
+What we agreed, now in the slides as well:
 
-## 2026-10-13 - Supervisor feedback: data stack and test design
+- **Data:** BigQuery public datasets replace Dune as the main on-chain
+  source, so everything stays free. Etherscan is a backup for lookups.
+  BigQuery is behind the live chain, so the live feed uses Alchemy/Infura
+  (ETH) and Mempool.space (BTC). The Graph for DEX liquidity, CCXT for
+  prices.
+- **History:** 3 months for BTC and ETH, which fits in the free 1 TiB a
+  month as long as I filter queries by date and column.
+- **Objective 4:** lagged-returns model vs the same model plus each signal,
+  on a walk-forward split, compared by out-of-sample RMSE. The difference
+  is tested with Diebold-Mariano, so "better forecast" is an actual result,
+  not just a smaller number. Granger is only support, because a signal can
+  pass Granger and still lose on the forecast.
+- **Volatility:** added as a second target, decided in advance, so it's
+  part of the Holm correction too.
+- **Holm:** at 0.05 for each group. Objective 4 has 16 tests (4 signals x 2
+  coins x 2 targets) and Objective 5 has 64. With only 3 months of data, a
+  null result is likely and that's fine.
+- **Objective 5:** fixed the test. It's the correlation between each
+  signal and later returns/volatility, not return autocorrelation, which
+  doesn't even use the on-chain data.
+- **Lead-lag windows:** 30min, 1hr, 4hr, 24hr. I dropped 5 minutes because
+  it's shorter than a Bitcoin block, so it's not a fair place to claim a
+  lead.
+- **Walk-forward:** first test in week 5, rolled weekly, so 9 test weeks
+  out of 3 months.
 
-Changes agreed with Georgy and now reflected in the proposal slides and the
-sections above:
+## 13 Oct 2026 - Supervisor feedback: walk-forward
 
-- **Data stack:** Google BigQuery public datasets replace Dune as the main
-  on-chain source, keeping the stack fully free. Etherscan stays a
-  secondary source for lookups. BigQuery lags the chain tip, so the live
-  feed uses Alchemy/Infura (Ethereum) and Mempool.space (Bitcoin). DEX
-  liquidity stays on The Graph, and CCXT stays for price and volume.
-- **History:** 3 months for BTC and ETH, which fits in BigQuery's free
-  1 TiB per month if queries are filtered by date and column.
-- **Objective 4 (primary test):** a lagged-returns model vs the same model
-  plus each signal, compared on a walk-forward split by out-of-sample RMSE
-  for next-hour log returns. The RMSE gap is tested with Diebold-Mariano,
-  so "improves the forecast" is a result, not just a smaller number.
-  Granger is supporting evidence only, since a significant Granger result
-  can still lose on the forecast.
-- **Volatility:** added as a second pre-registered target, so its p-values
-  join the Holm family.
-- **Holm correction:** applied separately at family-wise 0.05. Objective 4
-  has 16 tests (4 signals x 2 assets x 2 targets) and Objective 5 has 64.
-  A null result is a likely and acceptable outcome on three months of data.
-- **Objective 5:** now names the right test, the correlation between each
-  signal and later returns/volatility, not return autocorrelation
-  (which does not include the on-chain series).
-- **Lead-lag windows:** 30min, 1hr, 4hr and 24hr. The 5-minute window was
-  dropped because it is shorter than a Bitcoin block and the lag on public
-  chain data, so it is a weak place to claim a lead.
-- **Walk-forward split:** first test at week 5, rolled weekly, giving 9
-  test weeks from 3 months (see the next entry for the window type).
+- **Expanding window:** fold 1 trains on weeks 1-4 and tests week 5, and
+  each fold after that keeps all the earlier weeks, so the last one trains
+  on about 12 weeks. Four weeks is short for rare events like big whale
+  transfers, and a sliding window would throw away data I can't spare.
+- **First test stays at week 5:** starting later would just mean fewer
+  test weeks.
+- **One pooled test:** the 9 test weeks (168 hours each, about 1,500 hours)
+  are scored as one RMSE. Winning, say, 5 of 9 weeks is a stability note,
+  not 9 separate chances to pass.
+- **No look-ahead:** any scaling is fitted on the training data only, and
+  each signal only uses data that was known at that hour.
+- **Why this matters:** it's the same idea as the Ito integral, which takes
+  the value at the start of each interval, so your position is fixed before
+  the move happens. The Stratonovich integral uses the midpoint, which
+  depends on where the price goes later in that interval. Walk-forward does
+  the same for the backtest: the model for each test week is fixed before
+  that week starts.
 
-## 2026-10-13 - Supervisor feedback: walk-forward design
+## 13 Oct 2026 - Data check and full test design
 
-- **Expanding window, not fixed:** fold 1 trains on weeks 1-4 and tests
-  week 5; each later fold keeps all earlier weeks, so the last fold trains
-  on about 12 weeks. Four weeks is a short sample for sparse events such as
-  whale transfers and large exchange flows, and a sliding window would throw
-  away data from an already short 3-month sample.
-- **First test stays at week 5:** a longer minimum would cut the number of
-  test weeks for little gain.
-- **One pooled test:** the 9 non-overlapping test weeks (168 hours each,
-  about 1,500 out-of-sample hours) are scored as one pooled RMSE. Winning in,
-  say, 5 of 9 weeks is a stability note, not nine separate chances to pass.
-- **No look-ahead:** any scaling is fitted inside the training window, and
-  each signal is built only from data already known at that hour.
-- **Why (adaptedness):** the Ito integral evaluates the integrand at the left
-  endpoint of each interval, so the position is fixed before the move that
-  follows; the Stratonovich integral uses the midpoint, which depends on where
-  the path goes later in the same interval. Walk-forward applies the same
-  rule to the backtest: the model for a test week is fixed before that week.
+**BigQuery check (free sandbox, 13 Oct, around 22:34 UTC):**
+- Newest Bitcoin block in `crypto_bitcoin.blocks`: 22:06 UTC. Newest
+  Ethereum block in `crypto_ethereum.blocks`: 22:33 UTC. So both tables
+  are up to date, about 30 minutes and 1 minute behind.
+- Pulling 3 months of `crypto_ethereum.token_transfers` (13 Jul to 13 Oct,
+  five columns, filtered by date) would scan 46.93 GB, under 5% of the free
+  1 TiB a month. I'll pull it once and keep it locally.
 
-## 2026-10-13 - Data feasibility check and full test design
+**Where each signal comes from, and the backup plan:**
 
-**BigQuery check (free sandbox, 13 Oct, about 22:34 UTC):**
-- Newest block in `crypto_bitcoin.blocks`: 2026-10-13 22:06 UTC. Newest
-  block in `crypto_ethereum.blocks`: 2026-10-13 22:33 UTC. Both public
-  tables are current, about 30 minutes and 1 minute behind the live chain.
-- A 3-month pull of `crypto_ethereum.token_transfers` (13 Jul to 13 Oct
-  2026, five columns, filtered by date) would scan 46.93 GB, under 5% of
-  the free 1 TiB a month. Pull once and store locally to stay in quota.
-
-**Where each signal comes from, and the fallback:**
-
-| Data | Source | Resolution | Fallback if it fails |
+| Data | Source | Resolution | If it fails |
 |---|---|---|---|
-| Exchange flows | BigQuery BTC and ETH tables, plus Arkham exchange labels | Every block | Published exchange wallet lists |
-| Whale transfers | BigQuery transfers, plus Arkham labels | Every block | Size threshold only, without labels |
-| Stablecoin flows | BigQuery Ethereum token transfers (USDT, USDC) | Every block | Etherscan token-transfer lookups |
-| DEX liquidity | The Graph (Uniswap subgraph) | Hourly pool data | Alchemy: read pool events directly |
+| Exchange flows | BigQuery BTC and ETH tables, plus exchange labels | Every block | Wallet addresses exchanges publish themselves |
+| Whale transfers | BigQuery transfers, plus labels | Every block | Size threshold only, no labels |
+| Stablecoin flows | BigQuery Ethereum token transfers (USDT, USDC) | Every block | Etherscan lookups |
+| DEX liquidity | The Graph (Uniswap subgraph) | Hourly | Read pool events through Alchemy |
 | Prices (targets) | CCXT (Binance) | 5-minute candles | Another exchange through CCXT |
-| Live feed | Alchemy/Infura (ETH), Mempool.space (BTC) | Seconds | BigQuery, accepting its lag |
+| Live feed | Alchemy/Infura (ETH), Mempool.space (BTC) | Seconds | BigQuery, with its lag |
 
-Go/no-go: every source is tested in week 1 of the pipeline phase. A signal
-whose source still fails is dropped and reported, and the others continue.
+Go/no-go: I'll test every source in week 1 of the pipeline phase. If one
+still doesn't work, I drop that signal, say so in the report, and carry on
+with the rest.
 
-**Test design, fixed before any test is run:**
+**Test design, fixed before I run anything:**
 - Targets: next-hour log return, and next-hour realised volatility (square
   root of the sum of squared 5-minute returns in that hour).
-- Baseline (Obj 4): autoregressive market-only model, OLS on the target's
-  own last 24 hourly values, refitted in each training window.
-- Signal model (Obj 4): the same baseline, unchanged, plus one signal's
-  last 24 hourly values.
-- Decision (Obj 4): lower pooled out-of-sample RMSE, confirmed by a
-  Diebold-Mariano test with Holm correction over 16 tests.
-- Lead-lag (Obj 5): Newey-West standard errors, because the 4hr and 24hr
-  windows overlap; Holm correction over 64 tests.
-- Timing: a transfer counts in the hour its block is mined and is used only
-  from the next hour; a daily signal uses its last completed day.
-- Composite (Obj 6): equal weights on z-scored signals as the main version;
-  weights fitted on training data are a secondary check only.
-- What a pass means: predictive value for BTC and ETH in this 3-month
-  sample only, not profit, since fees and slippage are not modelled.
-- Open question sent to Georgy: whether to add trading volume to the
+- Baseline (Obj 4): OLS on the target's own last 24 hourly values,
+  refitted in each training window.
+- Signal model (Obj 4): the same baseline plus one signal's last 24 hourly
+  values.
+- Decision (Obj 4): lower pooled out-of-sample RMSE, confirmed by
+  Diebold-Mariano with Holm over 16 tests.
+- Lead-lag (Obj 5): Newey-West errors because the 4hr and 24hr windows
+  overlap, Holm over 64 tests.
+- Timing: a transfer counts in the hour its block is mined and is only used
+  from the next hour. A daily signal uses the last full day.
+- Composite (Obj 6): equal weights on z-scored signals. Fitted weights are
+  only a side check.
+- What a pass means: the signal predicts something for BTC and ETH in this
+  3-month sample. It doesn't mean profit, since I'm not modelling fees or
+  slippage.
+- Asked my supervisor: should trading volume go into the baseline?
+
+## 15 Oct 2026 - Fixes after review
+
+- **Wallet labels:** Arkham's API needs approval, and its terms only allow
+  internal use and don't allow scraping or republishing their data. So
+  Arkham is now something I check in week 1, not something I'm relying on.
+  Backup: the wallet addresses exchanges publish themselves (Binance
+  published theirs in Nov 2022). Those only cover main wallets, so the
+  exchange flows would be partial.
+- **Composite (Obj 6):** I pick the best single signal using training data
+  only, then compare it with the composite on the same test weeks. That
+  way the test weeks can't influence which signal counts as "best".
+- **Hit rate:** for returns, it's the share of test hours where the
+  predicted direction (up or down) was right. Volatility doesn't have a
+  direction, so for that I show the forecast error compared with the
   baseline.
-
-## 2026-10-15 - Review fixes: labels, composite comparison, hit rate
-
-- **Wallet labels:** Arkham's API is by application and its terms limit use
-  to internal purposes, ban scraping and ban publishing compilations of its
-  data, so Arkham labels are now a week-1 feasibility check, not a confirmed
-  source. Fallback: wallet addresses that exchanges publish themselves (for
-  example Binance's proof-of-reserves addresses, Nov 2022). These cover main
-  wallets only, so exchange flows built from them are partial.
-- **Composite (Obj 6):** the best single signal is chosen on training data
-  only, then compared with the equal-weight composite on the same held-out
-  test weeks, so picking the "best" signal cannot use the test results.
-- **Hit rate:** for returns, the share of test hours where the predicted
-  direction (up or down) was right. Volatility has no direction, so it is
-  reported as forecast error against the baseline instead.
-- **Background statistic:** reworded to what the TRM Labs Q1 2026 Global
-  Crypto Adoption Index is reported to show: retail transaction volume of
-  $979B, down 11% from $1.1T a year earlier.
+- **Background stat:** reworded to match TRM Labs: retail transaction
+  volume of $979B in Q1 2026, down 11% from $1.1T a year earlier.

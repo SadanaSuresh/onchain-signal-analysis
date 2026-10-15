@@ -1,53 +1,52 @@
 ## What this project is about
 
-Traders usually rely on price charts and market data, but this often misses the on-chain
-transfer data, such as large amounts of cryptocurrency moving in or out of exchanges.
-This kind of activity can signal a price move before it shows up on the chart, which
-matters for a trader's P&L.
+Traders usually rely on price charts and market data, but that misses what's
+happening on the blockchain itself, like large amounts of crypto moving in or
+out of exchanges. That kind of activity can show up before a price move
+appears on the chart, which matters for a trader's P&L.
 
-This project investigates whether on-chain signals (things that can be observed
-directly on the blockchain, separate from price and volume) carry information that
-isn't already reflected in market data, and whether that information is useful enough
-to act on.
+This project tests whether on-chain signals (things you can see directly on
+the blockchain, separate from price and volume) carry information that isn't
+already in market data, and whether it's useful enough to act on.
 
 ## Research questions
 
-Based on scoping discussions with the supervisor, the project investigates the
-following (see `research.md` for progress on each):
+These came out of my scoping discussions with my supervisor (progress on each
+is in `research.md`):
 
-1. Raw on-chain and market data collection
+1. Collecting raw on-chain and market data
 2. Exchange inflows and outflows
-3. Whale wallet tracking over time
-4. Distinguishing between types of transfers
-5. Entity clustering (grouping wallets belonging to the same real-world actor)
-6. Stablecoin flow monitoring
-7. Cross-venue capital flow (money moving between exchanges/chains)
-8. DEX (decentralised exchange) liquidity pool activity
-9. Anomaly detection against normal wallet/token behaviour
-10. Timing (when a transfer happens vs when it is confirmed on-chain)
-11. Whether on-chain signals add information beyond market data alone
-12. Lead-lag relationships between on-chain activity and price
-13. How multiple signals interact when combined
-14. Guarding against overfitting and multiple-testing bias when testing many signals
+3. Tracking whale wallets over time
+4. Telling different types of transfers apart
+5. Entity clustering (grouping wallets that belong to the same owner)
+6. Stablecoin flows
+7. Money moving between exchanges and chains
+8. DEX (decentralised exchange) liquidity pools
+9. Spotting unusual activity compared with a wallet's or token's normal behaviour
+10. Timing (when a transfer is sent vs when it's confirmed on-chain)
+11. Whether on-chain signals add anything beyond market data
+12. How far on-chain activity leads price (lead-lag)
+13. What happens when the signals are combined
+14. Avoiding overfitting and false positives when testing lots of signals
 
-## Planned data sources (free tier)
+## Data sources (all free tier)
 
-| Source | Used for |
+| Source | What I use it for |
 |---|---|
-| Google BigQuery public datasets | Main on-chain source: SQL over historical Bitcoin and Ethereum data (exchange flows, whale transfers, stablecoin flows) |
-| Etherscan | Secondary source for address and transaction lookups |
-| Arkham Intelligence | Entity clustering, wallet labelling |
-| The Graph | DEX liquidity pool events (subgraphs) |
-| CCXT | Market price/volume data across exchanges |
-| Alchemy / Infura | Live feed for recent Ethereum activity (BigQuery lags the chain tip) |
-| Mempool.space | Live Bitcoin data and pre-confirmation timing |
+| Google BigQuery public datasets | Main on-chain source: SQL over Bitcoin and Ethereum history (exchange flows, whale transfers, stablecoin flows) |
+| Etherscan | Backup for address and transaction lookups |
+| Arkham Intelligence | Wallet labels, if API access is approved |
+| The Graph | DEX liquidity pool data |
+| CCXT | Price and volume data from exchanges |
+| Alchemy / Infura | Live Ethereum feed (BigQuery runs behind the live chain) |
+| Mempool.space | Live Bitcoin data and transfer timing |
 
-## Repository structure
+## Folders
 
 ```
-data/         raw and processed datasets
-notebooks/    exploratory analysis
-src/          data collection, processing and signal-testing code
-docs/         project proposal materials, diagrams, written notes
-research.md   ongoing research log
+data/         raw and processed data
+notebooks/    exploration
+src/          data collection, processing and testing code
+docs/         proposal material, diagrams and notes
+research.md   my research log
 ```
