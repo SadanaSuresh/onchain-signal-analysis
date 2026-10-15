@@ -548,3 +548,21 @@ whose source still fails is dropped and reported, and the others continue.
   sample only, not profit, since fees and slippage are not modelled.
 - Open question sent to Georgy: whether to add trading volume to the
   baseline.
+
+## 2026-10-15 - Review fixes: labels, composite comparison, hit rate
+
+- **Wallet labels:** Arkham's API is by application and its terms limit use
+  to internal purposes, ban scraping and ban publishing compilations of its
+  data, so Arkham labels are now a week-1 feasibility check, not a confirmed
+  source. Fallback: wallet addresses that exchanges publish themselves (for
+  example Binance's proof-of-reserves addresses, Nov 2022). These cover main
+  wallets only, so exchange flows built from them are partial.
+- **Composite (Obj 6):** the best single signal is chosen on training data
+  only, then compared with the equal-weight composite on the same held-out
+  test weeks, so picking the "best" signal cannot use the test results.
+- **Hit rate:** for returns, the share of test hours where the predicted
+  direction (up or down) was right. Volatility has no direction, so it is
+  reported as forecast error against the baseline instead.
+- **Background statistic:** reworded to what the TRM Labs Q1 2026 Global
+  Crypto Adoption Index is reported to show: retail transaction volume of
+  $979B, down 11% from $1.1T a year earlier.
