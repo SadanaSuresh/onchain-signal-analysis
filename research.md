@@ -241,7 +241,7 @@ any results, so I can't move the goalposts later):
 | Objective | Method | Pass if |
 |---|---|---|
 | 3 (anomaly detection) | Rolling z-score per wallet/token, not one fixed threshold | It flags transfers more than 2 standard deviations from that wallet/token's recent average |
-| 4 (beyond market data) | Baseline: OLS on the target's own last 24 hourly values, refitted each training window. Signal model: the same plus one signal's last 24 hourly values. Walk-forward split; ADF test first; Granger as support only | Lower out-of-sample RMSE for next-hour log returns and realised volatility, and the gap is significant on Diebold-Mariano after Holm (16 tests). A signal that fails is reported, not hidden |
+| 4 (beyond market data) | Baseline: OLS on the target's own last 24 hourly values plus the last 24 hourly trading volumes (log), refitted each training window. Signal model: the same plus one signal's last 24 hourly values. Walk-forward split; ADF test first; Granger as support only | Lower out-of-sample RMSE for next-hour log returns and realised volatility, and the gap is significant on Diebold-Mariano after Holm (16 tests). A signal that fails is reported, not hidden |
 | 5 (lead-lag) | Correlation between each signal and later returns and volatility at 30min, 1hr, 4hr and 24hr, with Newey-West errors because the longer windows overlap | The shortest window that's significant after Holm (64 tests) and holds out-of-sample is the lead time |
 | 6 (composite) | Equal weights on the 4 z-scored signals, fixed in advance; fitted weights only as a side check | Beats the best single signal (picked on training data only) out-of-sample on Diebold-Mariano |
 | 7 (walk-forward) | Expanding window: train on weeks 1-4, test week 5, then keep adding weeks and roll forward weekly to week 13 (9 test weeks). Scaling is fitted inside each training window and signals only use data known at that hour | RMSE pooled over the 9 test weeks (about 1,500 hours). Winning individual weeks is just a stability note. Nothing counts as confirmed unless it holds out-of-sample |
@@ -423,7 +423,8 @@ with the rest.
 - Targets: next-hour log return, and next-hour realised volatility (square
   root of the sum of squared 5-minute returns in that hour).
 - Baseline (Obj 4): OLS on the target's own last 24 hourly values,
-  refitted in each training window.
+  refitted in each training window. (Trading volume added on 15 Oct, see
+  below.)
 - Signal model (Obj 4): the same baseline plus one signal's last 24 hourly
   values.
 - Decision (Obj 4): lower pooled out-of-sample RMSE, confirmed by
@@ -456,3 +457,12 @@ with the rest.
   baseline.
 - **Background stat:** reworded to match TRM Labs: retail transaction
   volume of $979B in Q1 2026, down 11% from $1.1T a year earlier.
+
+## 15 Oct 2026 - Trading volume added to the baseline
+
+My supervisor said to add trading volume to the baseline. So the baseline is
+now OLS on the target's own last 24 hourly values plus the last 24 hourly
+trading volumes (log, from Binance through CCXT), refitted in each training
+window. The signal model is the same plus one signal. This makes the test
+harder to pass: a signal now has to add something beyond both past returns
+and volume.
